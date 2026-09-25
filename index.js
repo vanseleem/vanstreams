@@ -4,7 +4,7 @@ const express = require('express');
 const axios   = require('axios');
 
 const app  = express();
-const PORT = process.env.PORT || 7860;
+const serverless = require('serverless-http');
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin',  '*');
@@ -507,4 +507,5 @@ app.get('/', (req, res) => {
 </html>`);
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log('VanStreams+ 🎬 v7.0.5 on :' + PORT));
+module.exports.handler = serverless(app);
+});
