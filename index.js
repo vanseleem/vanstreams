@@ -504,7 +504,7 @@ app.get('/', (req, res) => {
   </div>
 </body>
 </html>`);
-});
+}
 
+// ── NETLIFY EXPORT (replaces app.listen) ─────────────────────────────────────
 module.exports.handler = serverless(app);
-});
