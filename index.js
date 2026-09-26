@@ -1,9 +1,9 @@
 'use strict';
 
-const express = require('express');
-const axios   = require('axios');
-const app  = express();
+const express    = require('express');
+const axios      = require('axios');
 const serverless = require('serverless-http');
+const app        = express();
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin',  '*');
@@ -34,18 +34,8 @@ const QUALITY_RANK = {
 const PRIORITY_PROVIDERS = ['yts', 'knaben', 'torrentsdb', 'eztv', 'nyaasi', 'thepiratebay'];
 
 const ALLOWED_PROVIDERS = [
-  'yts',
-  'knaben',
-  'thepiratesbay',
-  'thepiratebay',
-  'eztv',
-  'torrentcsv',
-  'nyaa',
-  'nyaasi',
-  'limetorrent',
-  'kickasstorrents',
-  'animetosho',
-  'tokyotosho'
+  'yts','knaben','thepiratesbay','thepiratebay','eztv','torrentcsv',
+  'nyaa','nyaasi','limetorrent','kickasstorrents','animetosho','tokyotosho'
 ];
 
 const TR = [
@@ -61,7 +51,6 @@ const TR = [
   'https://tracker.zhuqiy.com:443/announce',
 ].map(t => '&tr=' + encodeURIComponent(t)).join('');
 
-// ─── Proxy fallback function ────────────────────────────────────────
 async function fetchWithProxy(url, options = {}) {
   const proxies = [
     url,
@@ -69,7 +58,6 @@ async function fetchWithProxy(url, options = {}) {
     PROXY_2 + encodeURIComponent(url),
     PROXY_3 + encodeURIComponent(url),
   ];
-
   for (const proxyUrl of proxies) {
     try {
       const response = await axios.get(proxyUrl, { timeout: 12000, headers: { 'User-Agent': UA }, ...options });
@@ -117,39 +105,17 @@ function getLangLine(str = '') {
   const lower = str.toLowerCase();
   const found = [];
   const checks = [
-    [/\benglish\b/,           'English'],
-    [/\bjapanese\b/,          'Japanese'],
-    [/\bhindi\b/,             'Hindi'],
-    [/\bfrench\b/,            'French'],
-    [/\bgerman\b/,            'German'],
-    [/\bspanish\b/,           'Spanish'],
-    [/\bitalian\b/,           'Italian'],
-    [/\brussian\b/,           'Russian'],
-    [/\bkorean\b/,            'Korean'],
-    [/\bchinese\b/,           'Chinese'],
-    [/\barabic\b/,            'Arabic'],
-    [/\bportuguese\b/,        'Portuguese'],
-    [/\bturkish\b/,           'Turkish'],
-    [/\bpolish\b/,            'Polish'],
-    [/\bdutch\b/,             'Dutch'],
-    [/\bczech\b/,             'Czech'],
-    [/\bswedish\b/,           'Swedish'],
-    [/\bnorwegian\b/,         'Norwegian'],
-    [/\bdanish\b/,            'Danish'],
-    [/\bfinnish\b/,           'Finnish'],
-    [/\bromanian\b/,          'Romanian'],
-    [/\bgreek\b/,             'Greek'],
-    [/\bhebrew\b/,            'Hebrew'],
-    [/\bthai\b/,              'Thai'],
-    [/\bindonesian\b/,        'Indonesian'],
-    [/\bvietnamese\b/,        'Vietnamese'],
-    [/\btamil\b/,             'Tamil'],
-    [/\btelugu\b/,            'Telugu'],
-    [/\burdu\b/,              'Urdu'],
-    [/\bdubbed\b/,            'Dubbed'],
-    [/\bdual[\s\-]audio\b/,   'Dual Audio'],
-    [/\bmulti[\s\-]audio\b/,  'Multi Audio'],
-    [/\bmulti\b/,             'Multi'],
+    [/\benglish\b/, 'English'],[/\bjapanese\b/, 'Japanese'],[/\bhindi\b/, 'Hindi'],
+    [/\bfrench\b/, 'French'],[/\bgerman\b/, 'German'],[/\bspanish\b/, 'Spanish'],
+    [/\bitalian\b/, 'Italian'],[/\brussian\b/, 'Russian'],[/\bkorean\b/, 'Korean'],
+    [/\bchinese\b/, 'Chinese'],[/\barabic\b/, 'Arabic'],[/\bportuguese\b/, 'Portuguese'],
+    [/\bturkish\b/, 'Turkish'],[/\bpolish\b/, 'Polish'],[/\bdutch\b/, 'Dutch'],
+    [/\bczech\b/, 'Czech'],[/\bswedish\b/, 'Swedish'],[/\bnorwegian\b/, 'Norwegian'],
+    [/\bdanish\b/, 'Danish'],[/\bfinnish\b/, 'Finnish'],[/\bromanian\b/, 'Romanian'],
+    [/\bgreek\b/, 'Greek'],[/\bhebrew\b/, 'Hebrew'],[/\bthai\b/, 'Thai'],
+    [/\bindonesian\b/, 'Indonesian'],[/\bvietnamese\b/, 'Vietnamese'],[/\btamil\b/, 'Tamil'],
+    [/\btelugu\b/, 'Telugu'],[/\burdu\b/, 'Urdu'],[/\bdubbed\b/, 'Dubbed'],
+    [/\bdual[\s\-]audio\b/, 'Dual Audio'],[/\bmulti[\s\-]audio\b/, 'Multi Audio'],[/\bmulti\b/, 'Multi'],
   ];
   for (const [re, label] of checks) {
     if (re.test(lower)) {
@@ -162,7 +128,6 @@ function getLangLine(str = '') {
 
 function processStreams(streams, type) {
   const maxSize = type === 'series' ? MAX_SIZE_GB_SERIES : MAX_SIZE_GB_MOVIE;
-
   const filtered = streams.filter(s => {
     if (!s.infoHash && !s.url) return false;
     if (s._provider && !ALLOWED_PROVIDERS.includes(s._provider.toLowerCase())) return false;
@@ -172,23 +137,19 @@ function processStreams(streams, type) {
     if (sizeGB !== null && sizeGB > maxSize) return false;
     return true;
   });
-
   const seen   = new Set();
   const unique = filtered.filter(s => {
     const key = (s.infoHash || '').toLowerCase();
     if (!key) return true;
     if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+    seen.add(key); return true;
   });
-
   const byQuality = {};
   unique.forEach(s => {
     const q = s._quality || getQuality(s.title || s.name || '') || 'unknown';
     if (!byQuality[q]) byQuality[q] = [];
     byQuality[q].push(s);
   });
-
   for (const q in byQuality) {
     byQuality[q].sort((a, b) => {
       const rankA = PRIORITY_PROVIDERS.indexOf((a._source || '').toLowerCase());
@@ -199,11 +160,7 @@ function processStreams(streams, type) {
       return getSeeders(b) - getSeeders(a);
     });
   }
-
-  const sortedQualities = Object.keys(byQuality).sort(
-    (a, b) => (QUALITY_RANK[a] || 99) - (QUALITY_RANK[b] || 99)
-  );
-
+  const sortedQualities = Object.keys(byQuality).sort((a, b) => (QUALITY_RANK[a] || 99) - (QUALITY_RANK[b] || 99));
   const result = [];
   sortedQualities.forEach(q => result.push(...byQuality[q].slice(0, LINKS_PER_QUALITY)));
   return result;
@@ -240,14 +197,14 @@ async function scrapeYTS(imdbId) {
         const sizeStr    = sizeGB ? sizeGB.toFixed(2) + ' GB' : (t.size || '');
         const langLine   = getLangLine(qualityStr);
         streams.push({
-          infoHash: t.hash.toLowerCase(),
-          name:     qualityStr,
-          title:    `☀️ ${movie.title} (${movie.year})\n🌱 ${t.seeds || 0}\n💾 ${sizeStr}\n🏅 YTS${langLine ? '\n🔊 ' + langLine : ''}`,
-          sources:  [],
-          _quality: getQuality(qualityStr),
-          _seeders: t.seeds || 0,
-          _sizeGB:  sizeGB,
-          _source:  'yts',
+          infoHash:  t.hash.toLowerCase(),
+          name:      qualityStr,
+          title:     `☀️ ${movie.title} (${movie.year})\n🌱 ${t.seeds || 0}\n💾 ${sizeStr}\n🏅 YTS${langLine ? '\n🔊 ' + langLine : ''}`,
+          sources:   [],
+          _quality:  getQuality(qualityStr),
+          _seeders:  t.seeds || 0,
+          _sizeGB:   sizeGB,
+          _source:   'yts',
           _provider: 'yts',
         });
       }
@@ -282,14 +239,14 @@ async function scrapeKnaben(title, year, isSeries, season, episode) {
       const sizeStr = sizeGB ? sizeGB.toFixed(2) + ' GB' : '';
       const langLine = getLangLine(hit.title || '');
       streams.push({
-        infoHash: hash.toLowerCase(),
-        name:     hit.title || '',
-        title:    `☀️ ${title}${year ? ' (' + year + ')' : ''}\n🌱 ${hit.seeders || 0}\n💾 ${sizeStr}\n🏅 Knaben${langLine ? '\n🔊 ' + langLine : ''}`,
-        sources:  [],
-        _quality: getQuality(hit.title || ''),
-        _seeders: hit.seeders || 0,
-        _sizeGB:  sizeGB,
-        _source:  'knaben',
+        infoHash:  hash.toLowerCase(),
+        name:      hit.title || '',
+        title:     `☀️ ${title}${year ? ' (' + year + ')' : ''}\n🌱 ${hit.seeders || 0}\n💾 ${sizeStr}\n🏅 Knaben${langLine ? '\n🔊 ' + langLine : ''}`,
+        sources:   [],
+        _quality:  getQuality(hit.title || ''),
+        _seeders:  hit.seeders || 0,
+        _sizeGB:   sizeGB,
+        _source:   'knaben',
         _provider: 'knaben',
       });
     }
@@ -317,11 +274,11 @@ async function fetchTorrentio(type, id, title, year) {
       const langLine = getLangLine(origTitle);
       return {
         ...s,
-        title:    `☀️ ${title}${year ? ' (' + year + ')' : ''}\n🌱 ${seeders}\n💾 ${sizeGB ? sizeGB.toFixed(2) + ' GB' : 'N/A'}\n🏅 ${provider}${langLine ? '\n🔊 ' + langLine : ''}`,
-        _quality: getQuality(s.title || s.name || ''),
-        _seeders: seeders,
-        _sizeGB:  sizeGB,
-        _source:  'torrentio',
+        title:     `☀️ ${title}${year ? ' (' + year + ')' : ''}\n🌱 ${seeders}\n💾 ${sizeGB ? sizeGB.toFixed(2) + ' GB' : 'N/A'}\n🏅 ${provider}${langLine ? '\n🔊 ' + langLine : ''}`,
+        _quality:  getQuality(s.title || s.name || ''),
+        _seeders:  seeders,
+        _sizeGB:   sizeGB,
+        _source:   'torrentio',
         _provider: provider,
       };
     });
@@ -330,7 +287,6 @@ async function fetchTorrentio(type, id, title, year) {
   } catch (e) { console.error('[Torrentio]', e.message); return []; }
 }
 
-// ─── Manifest ──────────────────────────────────────────────────────────
 app.get('/manifest.json', (_, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.json({
@@ -345,33 +301,26 @@ app.get('/manifest.json', (_, res) => {
   });
 });
 
-// ─── Stream handler ────────────────────────────────────────────────
 app.get('/stream/:type/:id.json', async (req, res) => {
   const { type, id } = req.params;
   const isSeries = type === 'series';
   const [imdbId, season = '', episode = ''] = id.split(':');
-
   const meta  = await tmdbLookup(imdbId);
   const title = meta?.title || '';
   const year  = meta?.year  || '';
-
   const [ytsR, knabenR, torrentioR] = await Promise.allSettled([
     isSeries ? Promise.resolve([]) : scrapeYTS(imdbId),
     scrapeKnaben(title, year, isSeries, season, episode),
     fetchTorrentio(type, id, title, year),
   ]);
-
   const yts       = ytsR.status       === 'fulfilled' ? (ytsR.value       || []) : [];
   const knaben    = knabenR.status    === 'fulfilled' ? (knabenR.value    || []) : [];
   const torrentio = torrentioR.status === 'fulfilled' ? (torrentioR.value || []) : [];
-
   const streams = processStreams([...yts, ...knaben, ...torrentio], type);
-
   console.log(`[stream] ${type}/${id} → yts:${yts.length} knaben:${knaben.length} torrentio:${torrentio.length} final:${streams.length}`);
   res.json({ streams });
 });
 
-// ─── Diagnostic endpoints ─────────────────────────────────────────────
 app.get('/diag/:type/:id', async (req, res) => {
   const { type, id } = req.params;
   const isSeries = type === 'series';
@@ -396,95 +345,46 @@ app.get('/diag-raw/:type/:id', async (req, res) => {
   try {
     const url = `${TORRENTIO_BASE}/stream/${type}/${id}.json`;
     const { data } = await fetchWithProxy(url);
-    res.json((data.streams || []).slice(0, 3).map(s => ({
-      name: s.name, title: s.title, behaviorHints: s.behaviorHints,
-    })));
+    res.json((data.streams || []).slice(0, 3).map(s => ({ name: s.name, title: s.title, behaviorHints: s.behaviorHints })));
   } catch (e) { res.json({ error: e.message }); }
 });
 
-// ══════════════════════════  LANDING PAGE  ═══════════════════════════
 app.get('/', (req, res) => {
-  const manifestUrl = 'https://vanseleem-vsplus.hf.space/manifest.json';
-  const installUrl  = 'stremio://vanseleem-vsplus.hf.space/manifest.json';
-
+  const manifestUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/manifest.json`;
+  const installUrl  = manifestUrl.replace('https://', 'stremio://');
   res.type('html').send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VanStreams+</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
-      background: #050810;
-      color: #dde6f0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 28px 20px;
-      background-image:
-        radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,0,0.05) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255,0,0,0.03) 0%, transparent 60%);
-    }
+    body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: #050810; color: #dde6f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 20px; background-image: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,0,0.05) 0%, transparent 70%), radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255,0,0,0.03) 0%, transparent 60%); }
     .wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 20px; }
-    .header { display: flex; flex-direction: column; gap: 12px; }
     .logo { font-size: 2.6rem; font-weight: 800; letter-spacing: -1px; line-height: 1; }
-    .logo .van  { color: #FF0000; }
-    .logo .streams { color: #ffffff; }
-    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: rgba(255,0,0,0.08); border: 1px solid rgba(255,0,0,0.18);
-      color: #ffffff; padding: 4px 11px; border-radius: 100px;
-      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
-    }
-    .badge.series { color: #ffffff; }
-    .desc { color: #ffffff; font-size: 0.9rem; line-height: 1.6; margin-top: 2px; }
-    .card {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 16px; padding: 20px 22px;
-    }
+    .logo .van { color: #FF0000; } .logo .streams { color: #ffffff; }
+    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,0,0,0.08); border: 1px solid rgba(255,0,0,0.18); color: #ffffff; padding: 4px 11px; border-radius: 100px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+    .desc { color: #ffffff; font-size: 0.9rem; line-height: 1.6; margin-top: 10px; }
+    .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 20px 22px; }
     .card-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; margin-bottom: 10px; }
-    .url-box {
-      font-family: 'SF Mono','Fira Code','Consolas',monospace; font-size: 0.8rem;
-      color: #ffffff; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,0,0,0.12);
-      border-radius: 10px; padding: 11px 14px; word-break: break-all; line-height: 1.5;
-    }
+    .url-box { font-family: 'SF Mono','Fira Code','Consolas',monospace; font-size: 0.8rem; color: #ffffff; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,0,0,0.12); border-radius: 10px; padding: 11px 14px; word-break: break-all; line-height: 1.5; }
     .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
     .btn { padding: 10px 22px; border-radius: 10px; font-size: 0.84rem; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: all 0.15s; font-family: inherit; }
-    .btn-install {
-      background: #FF0000;
-      color: #ffffff;
-    }
-    .btn-install:hover { background: #cc0000; }
-    .btn-copy {
-      background: #ffffff;
-      color: #050810;
-      border: 1px solid #ffffff;
-    }
-    .btn-copy:hover {
-      background: #e6e6e6;
-      border-color: #e6e6e6;
-    }
+    .btn-install { background: #FF0000; color: #ffffff; } .btn-install:hover { background: #cc0000; }
+    .btn-copy { background: #ffffff; color: #050810; border: 1px solid #ffffff; } .btn-copy:hover { background: #e6e6e6; }
     .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .stat { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px 12px; text-align: center; }
     .stat-val { font-size: 1.5rem; font-weight: 800; color: #fff; line-height: 1; margin-bottom: 5px; }
-    .stat-lbl { font-size: 0.68rem; color: #aaa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: pre-line; }
+    .stat-lbl { font-size: 0.68rem; color: #aaa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .made-by { text-align: center; color: #ffffff; font-size: 0.85rem; margin-top: 6px; opacity: 0.8; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
-      <div class="logo">
-        <span class="van">Van</span> <span class="streams">Streams+</span>
-      </div>
-      <div class="badge-row">
-        <span class="badge">🎬 Movies</span>
-        <span class="badge series">📺 Series</span>
-      </div>
+      <div class="logo"><span class="van">Van</span> <span class="streams">Streams+</span></div>
+      <div class="badge-row"><span class="badge">🎬 Movies</span><span class="badge">📺 Series</span></div>
       <p class="desc">Get Your 🍿 Ready</p>
     </div>
     <div class="card">
@@ -504,7 +404,6 @@ app.get('/', (req, res) => {
   </div>
 </body>
 </html>`);
-}
+});
 
-// ── NETLIFY EXPORT (replaces app.listen) ─────────────────────────────────────
 module.exports.handler = serverless(app);
