@@ -34,33 +34,33 @@ const TR = [
   'udp://tracker.dler.org:6969/announce',
   'https://tracker.moeblog.cn:443/announce',
   'https://tracker.zhuqiy.com:443/announce',
-].map(function(t) { return '&tr=' + encodeURIComponent(t); }).join('');
+].map(t => '&tr=' + encodeURIComponent(t)).join('');
 
 function buildMagnet(hash, name) {
   return 'magnet:?xt=urn:btih:' + hash.toLowerCase() + '&dn=' + encodeURIComponent(name) + TR;
 }
 
-function getQuality(str) {
-  var s = (str || '').toLowerCase();
-  if (s.indexOf('4k') !== -1 || s.indexOf('2160p') !== -1 || s.indexOf('uhd') !== -1) return '4k';
-  if (s.indexOf('1080p') !== -1) return '1080p';
-  if (s.indexOf('720p') !== -1)  return '720p';
-  if (s.indexOf('576p') !== -1)  return '576p';
-  if (s.indexOf('480p') !== -1)  return '480p';
-  if (s.indexOf('webrip') !== -1) return 'webrip';
-  if (s.indexOf('webdl') !== -1 || s.indexOf('web-dl') !== -1) return 'webdl';
+function getQuality(str = '') {
+  const s = str.toLowerCase();
+  if (s.includes('4k') || s.includes('2160p') || s.includes('uhd')) return '4k';
+  if (s.includes('1080p'))  return '1080p';
+  if (s.includes('720p'))   return '720p';
+  if (s.includes('576p'))   return '576p';
+  if (s.includes('480p'))   return '480p';
+  if (s.includes('webrip')) return 'webrip';
+  if (s.includes('webdl') || s.includes('web-dl')) return 'webdl';
   return null;
 }
 
 function getSizeGB(stream) {
-  var raw = (stream.title || '') + ' ' + (stream.name || '');
-  var m = raw.match(/💾\s*([\d.]+)\s*(GB|MB)/i) || raw.match(/([\d.]+)\s*(GB|MB)/i);
+  const raw = (stream.title || '') + ' ' + (stream.name || '');
+  const m   = raw.match(/💾\s*([\d.]+)\s*(GB|MB)/i) || raw.match(/([\d.]+)\s*(GB|MB)/i);
   if (!m) {
-    if (typeof stream.size === 'number' && stream.size > 0) return stream.size / 1073741824;
+    if (typeof stream.size  === 'number' && stream.size  > 0) return stream.size  / 1073741824;
     if (typeof stream.bytes === 'number' && stream.bytes > 0) return stream.bytes / 1073741824;
     return null;
   }
-  var val = parseFloat(m[1]);
+  const val = parseFloat(m[1]);
   return m[2].toUpperCase() === 'GB' ? val : val / 1024;
 }
 
@@ -73,15 +73,15 @@ function formatSize(sizeGB) {
 function getSeeders(stream) {
   if (stream._seeders != null) return stream._seeders;
   if (stream.behaviorHints && stream.behaviorHints.seeders) return stream.behaviorHints.seeders;
-  var raw = (stream.title || '') + ' ' + (stream.name || '');
-  var m = raw.match(/🌱\s*(\d+)/) || raw.match(/👤\s*(\d+)/);
+  const raw = (stream.title || '') + ' ' + (stream.name || '');
+  const m = raw.match(/🌱\s*(\d+)/) || raw.match(/👤\s*(\d+)/);
   return m ? parseInt(m[1], 10) : 0;
 }
 
-function getLangLine(str) {
-  var lower = (str || '').toLowerCase();
-  var found = [];
-  var checks = [
+function getLangLine(str = '') {
+  const lower = str.toLowerCase();
+  const found = [];
+  const checks = [
     [/\benglish\b/,          'English'],
     [/\bjapanese\b/,         'Japanese'],
     [/\bhindi\b/,            'Hindi'],
@@ -116,270 +116,213 @@ function getLangLine(str) {
     [/\bmulti[\s\-]audio\b/, 'Multi Audio'],
     [/\bmulti\b/,            'Multi'],
   ];
-  for (var i = 0; i < checks.length; i++) {
-    if (checks[i][0].test(lower)) {
-      if (checks[i][1] === 'Multi' && found.indexOf('Multi Audio') !== -1) continue;
-      found.push(checks[i][1]);
+  for (const [re, label] of checks) {
+    if (re.test(lower)) {
+      if (label === 'Multi' && found.includes('Multi Audio')) continue;
+      found.push(label);
     }
   }
-  return found.filter(function(v, i, a) { return a.indexOf(v) === i; }).join(' / ');
+  return [...new Set(found)].join(' / ');
 }
 
 function detectProvider(combined, item, idx) {
-  var upper = combined.toUpperCase();
+  const upper = combined.toUpperCase();
   if (item && item.provider) return String(item.provider);
   if (item && item.source)   return String(item.source);
   if (item && item.indexer)  return String(item.indexer);
-  for (var i = 0; i < KNOWN_PROVIDERS.length; i++) {
-    if (upper.indexOf(KNOWN_PROVIDERS[i].toUpperCase()) !== -1) return KNOWN_PROVIDERS[i];
+  for (const provider of KNOWN_PROVIDERS) {
+    if (upper.includes(provider.toUpperCase())) return provider;
   }
   return KNOWN_PROVIDERS[idx % KNOWN_PROVIDERS.length];
 }
 
 function qualityEmoji(quality) {
-  if (quality === '4k' || quality === '2160p') return '🔥';
-  if (quality === '1080p')  return '🌟';
-  if (quality === '720p')   return '💎';
-  if (quality === '576p' || quality === '480p') return '📱';
-  if (quality === 'webrip' || quality === 'webdl') return '🌐';
-  return '🔥';
-}
-
-function buildUnifiedTitle(opts) {
-  var isSeries  = opts.isSeries;
-  var title     = opts.title;
-  var year      = opts.year;
-  var season    = opts.season;
-  var episode   = opts.episode;
-  var quality   = opts.quality;
-  var tagLine   = opts.tagLine;
-  var seeders   = opts.seeders;
-  var sizeStr   = opts.sizeStr;
-  var provider  = opts.provider;
-  var header    = isSeries
-    ? '📺 ' + title + ' | S' + (season || 1) + ' E' + (episode || 1)
-    : '🎬 ' + title + (year ? ' - ' + year : '');
-  var qLine     = qualityEmoji(quality) + ' ' + (quality || 'unknown') + (tagLine ? ' | ' + tagLine : '');
-  var statsLine = '🌱 ' + seeders + ' | 💾 ' + sizeStr + ' | 🔗 ' + provider;
-  return header + '\n' + qLine + '\n' + statsLine;
-}
-
-function buildUnifiedName(opts) {
-  var quality     = opts.quality;
-  var seeders     = opts.seeders;
-  var sourceLabel = opts.sourceLabel;
-  return sourceLabel + ' | ' + (quality || 'unknown').toUpperCase() + ' | 🌱' + seeders;
-}
-
-// ── Safe fetch with timeout using Promise.race ───────────────────────
-
-function fetchWithTimeout(url, options, ms) {
-  var timeout = ms || 15000;
-  var timeoutPromise = new Promise(function(_, reject) {
-    setTimeout(function() { reject(new Error('timeout')); }, timeout);
-  });
-  return Promise.race([fetch(url, options), timeoutPromise]);
-}
-
-function fetchWithProxy(url) {
-  var proxies = [
-    url,
-    'https://corsproxy.io/?url=' + encodeURIComponent(url),
-    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
-    'https://thingproxy.freeboard.io/fetch/' + url,
-  ];
-  var i = 0;
-  function tryNext() {
-    if (i >= proxies.length) return Promise.resolve(null);
-    var p = proxies[i++];
-    return fetchWithTimeout(p, { headers: { 'User-Agent': UA, Accept: 'application/json' } }, 15000)
-      .then(function(r) {
-        if (r && r.ok) return r.json();
-        return tryNext();
-      })
-      .catch(function() { return tryNext(); });
+  switch (quality) {
+    case '4k':
+    case '2160p':  return '🔥';
+    case '1080p':  return '🌟';
+    case '720p':   return '💎';
+    case '576p':
+    case '480p':   return '📱';
+    case 'webrip':
+    case 'webdl':  return '🌐';
+    default:       return '🔥';
   }
-  return tryNext();
 }
 
-// ── Process & deduplicate ────────────────────────────────────────────
+function buildUnifiedTitle({ isSeries, title, year, season, episode, quality, tagLine, seeders, sizeStr, provider }) {
+  const header    = isSeries
+    ? `📺 ${title} | S${season || 1} E${episode || 1}`
+    : `🎬 ${title}${year ? ' - ' + year : ''}`;
+  const qLine     = `${qualityEmoji(quality)} ${quality || 'unknown'}${tagLine ? ' | ' + tagLine : ''}`;
+  const statsLine = `🌱 ${seeders} | 💾 ${sizeStr} | 🔗 ${provider}`;
+  return `${header}\n${qLine}\n${statsLine}`;
+}
+
+function buildUnifiedName({ quality, seeders, sourceLabel }) {
+  return `${sourceLabel} | ${(quality || 'unknown').toUpperCase()} | 🌱${seeders}`;
+}
 
 function processStreams(streams, type) {
-  var maxSize = type === 'series' ? MAX_SIZE_GB_SERIES : MAX_SIZE_GB_MOVIE;
+  const maxSize = type === 'series' ? MAX_SIZE_GB_SERIES : MAX_SIZE_GB_MOVIE;
 
-  var filtered = streams.filter(function(s) {
+  const filtered = streams.filter(s => {
     if (!s.infoHash && !s.url) return false;
-    var q = s._quality || getQuality(s.title || s.name || '');
-    if (!q || ALLOWED_QUALITIES.indexOf(q) === -1) return false;
-    var sizeGB = s._sizeGB != null ? s._sizeGB : getSizeGB(s);
+    const q = s._quality || getQuality(s.title || s.name || '');
+    if (!q || !ALLOWED_QUALITIES.includes(q)) return false;
+    const sizeGB = s._sizeGB != null ? s._sizeGB : getSizeGB(s);
     if (sizeGB !== null && sizeGB > maxSize) return false;
     return true;
   });
 
-  var seen = {};
-  var unique = filtered.filter(function(s) {
-    var key = (s.infoHash || '').toLowerCase();
+  const seen = new Set();
+  const unique = filtered.filter(s => {
+    const key = (s.infoHash || '').toLowerCase();
     if (!key) return true;
-    if (seen[key]) return false;
-    seen[key] = true;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 
-  var byQuality = {};
-  unique.forEach(function(s) {
-    var q = s._quality || getQuality(s.title || s.name || '') || 'unknown';
+  const byQuality = {};
+  unique.forEach(s => {
+    const q = s._quality || getQuality(s.title || s.name || '') || 'unknown';
     if (!byQuality[q]) byQuality[q] = [];
     byQuality[q].push(s);
   });
 
-  Object.keys(byQuality).forEach(function(q) {
-    byQuality[q].sort(function(a, b) {
-      var rankA = PRIORITY_PROVIDERS.indexOf((a._source || '').toLowerCase());
-      var rankB = PRIORITY_PROVIDERS.indexOf((b._source || '').toLowerCase());
-      var pA = rankA === -1 ? 999 : rankA;
-      var pB = rankB === -1 ? 999 : rankB;
+  for (const q in byQuality) {
+    byQuality[q].sort((a, b) => {
+      const rankA = PRIORITY_PROVIDERS.indexOf((a._source || '').toLowerCase());
+      const rankB = PRIORITY_PROVIDERS.indexOf((b._source || '').toLowerCase());
+      const pA = rankA === -1 ? 999 : rankA;
+      const pB = rankB === -1 ? 999 : rankB;
       if (pA !== pB) return pA - pB;
       return getSeeders(b) - getSeeders(a);
     });
-  });
+  }
 
-  var sortedQualities = Object.keys(byQuality).sort(function(a, b) {
-    return (QUALITY_RANK[a] || 99) - (QUALITY_RANK[b] || 99);
-  });
+  const sortedQualities = Object.keys(byQuality).sort(
+    (a, b) => (QUALITY_RANK[a] || 99) - (QUALITY_RANK[b] || 99)
+  );
 
-  var result = [];
-  sortedQualities.forEach(function(q) {
-    var slice = byQuality[q].slice(0, LINKS_PER_QUALITY);
-    slice.forEach(function(s) { result.push(s); });
-  });
+  const result = [];
+  sortedQualities.forEach(q => result.push(...byQuality[q].slice(0, LINKS_PER_QUALITY)));
   return result;
 }
 
 // ── TMDB ─────────────────────────────────────────────────────────────
 
-function tmdbLookup(tmdbId, type) {
-  var isSeries = type === 'tv' || type === 'series';
-  return fetchWithTimeout(
-    'https://api.themoviedb.org/3/' + (isSeries ? 'tv' : 'movie') + '/' + tmdbId + '?api_key=' + TMDB_KEY + '&append_to_response=external_ids',
-    { headers: { 'User-Agent': UA } },
-    8000
-  ).then(function(r) {
-    if (!r || !r.ok) {
-      return fetchWithTimeout(
-        'https://api.themoviedb.org/3/find/' + tmdbId + '?api_key=' + TMDB_KEY + '&external_source=imdb_id',
-        { headers: { 'User-Agent': UA } },
-        8000
-      ).then(function(r2) {
-        if (!r2 || !r2.ok) return null;
-        return r2.json().then(function(d) {
-          var movie = d.movie_results && d.movie_results[0];
-          var tv    = d.tv_results    && d.tv_results[0];
-          if (movie) return { imdbId: tmdbId, title: movie.title || movie.original_title, year: (movie.release_date || '').slice(0, 4) };
-          if (tv)    return { imdbId: tmdbId, title: tv.name    || tv.original_name,      year: (tv.first_air_date  || '').slice(0, 4) };
-          return null;
-        });
-      });
-    }
-    return r.json().then(function(d) {
-      var extIds = d.external_ids || {};
-      return {
-        imdbId: extIds.imdb_id || d.imdb_id || String(tmdbId),
-        title:  d.title || d.name || '',
-        year:   (d.release_date || d.first_air_date || '').slice(0, 4),
-      };
-    });
-  }).catch(function() { return null; });
+async function tmdbLookup(tmdbId, type) {
+  try {
+    const isSeries = type === 'tv' || type === 'series';
+    const r = await fetch(
+      `https://api.themoviedb.org/3/${isSeries ? 'tv' : 'movie'}/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=external_ids`,
+      { headers: { 'User-Agent': UA } }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    const extIds = d.external_ids || {};
+    return {
+      imdbId: extIds.imdb_id || d.imdb_id || String(tmdbId),
+      title:  d.title || d.name || '',
+      year:   (d.release_date || d.first_air_date || '').slice(0, 4),
+    };
+  } catch (_) { return null; }
 }
 
 // ── 1. YTS ───────────────────────────────────────────────────────────
 
-function scrapeYTS(imdbId) {
-  return fetchWithTimeout(
-    'https://movies-api.accel.li/api/v2/list_movies.json?query_term=' + imdbId + '&limit=10',
-    { headers: { 'User-Agent': UA } },
-    12000
-  ).then(function(r) {
-    if (!r || !r.ok) return [];
-    return r.json().then(function(data) {
-      if (data.status !== 'ok' || !data.data || !data.data.movies || !data.data.movies.length) return [];
-      var streams = [];
-      data.data.movies.forEach(function(movie) {
-        if (movie.imdb_code && movie.imdb_code !== imdbId) return;
-        (movie.torrents || []).forEach(function(t) {
-          if (!t.hash) return;
-          var qualityStr = (t.quality + ' ' + (t.type || '')).trim();
-          var sizeGB     = t.size_bytes ? t.size_bytes / 1073741824 : null;
-          var sizeStr    = formatSize(sizeGB);
-          var quality    = getQuality(qualityStr);
-          var upper      = qualityStr.toUpperCase();
-          var tags       = [];
-          if (upper.indexOf('HEVC') !== -1 || upper.indexOf('X265') !== -1 || upper.indexOf('H265') !== -1) tags.push('HEVC');
-          var langLine   = getLangLine(qualityStr);
-          tags.push(langLine || 'English');
-          var tagLine = tags.join(' • ');
-          streams.push({
-            infoHash:  t.hash.toLowerCase(),
-            name:      buildUnifiedName({ quality: quality, seeders: t.seeds || 0, sourceLabel: '🍿 YTS' }),
-            title:     buildUnifiedTitle({ isSeries: false, title: movie.title, year: String(movie.year), season: '', episode: '', quality: quality, tagLine: tagLine, seeders: t.seeds || 0, sizeStr: sizeStr, provider: 'YTS' }),
-            sources:   [],
-            _quality:  quality,
-            _seeders:  t.seeds || 0,
-            _sizeGB:   sizeGB,
-            _source:   'yts',
-            _provider: 'yts',
-          });
+async function scrapeYTS(imdbId) {
+  try {
+    const r = await fetch(
+      `https://movies-api.accel.li/api/v2/list_movies.json?query_term=${imdbId}&limit=10`,
+      { headers: { 'User-Agent': UA } }
+    );
+    if (!r.ok) return [];
+    const data = await r.json();
+    if (data.status !== 'ok' || !data.data || !data.data.movies || !data.data.movies.length) return [];
+    const streams = [];
+    for (const movie of data.data.movies) {
+      if (movie.imdb_code && movie.imdb_code !== imdbId) continue;
+      for (const t of (movie.torrents || [])) {
+        if (!t.hash) continue;
+        const qualityStr = `${t.quality} ${t.type || ''}`.trim();
+        const sizeGB     = t.size_bytes ? t.size_bytes / 1073741824 : null;
+        const sizeStr    = formatSize(sizeGB);
+        const quality    = getQuality(qualityStr);
+        const upper      = qualityStr.toUpperCase();
+        const tags       = [];
+        if (upper.includes('HEVC') || upper.includes('X265') || upper.includes('H265')) tags.push('HEVC');
+        const langLine = getLangLine(qualityStr);
+        if (langLine) tags.push(langLine);
+        else tags.push('English');
+        const tagLine = tags.join(' • ');
+        streams.push({
+          infoHash:  t.hash.toLowerCase(),
+          name:      buildUnifiedName({ quality, seeders: t.seeds || 0, sourceLabel: '🍿 YTS' }),
+          title:     buildUnifiedTitle({ isSeries: false, title: movie.title, year: String(movie.year), season: '', episode: '', quality, tagLine, seeders: t.seeds || 0, sizeStr, provider: 'YTS' }),
+          sources:   [],
+          _quality:  quality,
+          _seeders:  t.seeds || 0,
+          _sizeGB:   sizeGB,
+          _source:   'yts',
+          _provider: 'yts',
         });
-      });
-      return streams;
-    });
-  }).catch(function() { return []; });
+      }
+    }
+    return streams;
+  } catch (_) { return []; }
 }
 
 // ── 2. TorrentClaw ───────────────────────────────────────────────────
 
-function scrapeTorrentClaw(type, imdbId, title, year, season, episode) {
-  var isSeries = type === 'series' || type === 'tv';
-  var path     = isSeries
-    ? 'series/' + imdbId + ':' + (season || 1) + ':' + (episode || 1)
-    : 'movie/' + imdbId;
-  var url = TORRENTCLAW_API + '/stream/' + path + '.json';
+async function scrapeTorrentClaw(type, imdbId, title, year, season, episode) {
+  try {
+    const isSeries = type === 'series' || type === 'tv';
+    const path     = isSeries
+      ? `series/${imdbId}:${season || 1}:${episode || 1}`
+      : `movie/${imdbId}`;
+    const url = `${TORRENTCLAW_API}/stream/${path}.json`;
 
-  return fetchWithProxy(url).then(function(data) {
+    const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+    if (!r.ok) return [];
+    const data = await r.json();
     if (!data || !Array.isArray(data.streams) || !data.streams.length) return [];
-    var streams = [];
-    data.streams.forEach(function(item, idx) {
+
+    const streams = [];
+    data.streams.forEach((item, idx) => {
       if (!item) return;
-      var rawName  = item.name  || '';
-      var rawTitle = item.title || '';
-      var rawDesc  = item.description || '';
-      var combined = (rawName + ' ' + rawTitle + ' ' + rawDesc).replace(/\n/g, ' ');
-      var upper    = combined.toUpperCase();
-      var infoHashMatch = (item.url || '').match(/btih:([a-fA-F0-9]{32,40})/i);
-      var infoHash = item.infoHash || (infoHashMatch ? infoHashMatch[1] : null);
+      const rawName  = item.name  || '';
+      const rawTitle = item.title || '';
+      const rawDesc  = item.description || '';
+      const combined = `${rawName} ${rawTitle} ${rawDesc}`.replace(/\n/g, ' ');
+      const upper    = combined.toUpperCase();
+      const infoHashMatch = (item.url || '').match(/btih:([a-fA-F0-9]{32,40})/i);
+      const infoHash = item.infoHash || (infoHashMatch ? infoHashMatch[1] : null);
       if (!infoHash && !item.url) return;
-      var sizeGB = getSizeGB({ title: combined, size: item.size, bytes: item.bytes });
-      var sizeStr = formatSize(sizeGB);
-      var seeders = typeof item.seeders === 'number' ? item.seeders
-        : (function() {
-            var m = combined.match(/🌱\s*(\d+)/) || combined.match(/👤\s*(\d+)/) || combined.match(/(\d+)\s*seed/i);
-            return m ? parseInt(m[1], 10) : 0;
-          })();
-      var provider = detectProvider(combined, item, idx);
-      var quality  = getQuality(combined);
-      var tags = [];
-      if (upper.indexOf('DV') !== -1 || upper.indexOf('DOLBY VISION') !== -1) tags.push('DV');
-      if (upper.indexOf('HDR10+') !== -1)      tags.push('HDR10+');
-      else if (upper.indexOf('HDR10') !== -1)  tags.push('HDR10');
-      else if (upper.indexOf('HDR') !== -1)    tags.push('HDR');
-      if (upper.indexOf('HEVC') !== -1 || upper.indexOf('X265') !== -1 || upper.indexOf('H265') !== -1) tags.push('HEVC');
-      var langLine = getLangLine(combined);
-      tags.push(langLine || 'English');
-      var tagLine = tags.join(' • ');
+      const sizeGB = getSizeGB({ title: combined, size: item.size, bytes: item.bytes });
+      const sizeStr = formatSize(sizeGB);
+      const seeders = typeof item.seeders === 'number'
+        ? item.seeders
+        : (() => { const m = combined.match(/🌱\s*(\d+)/) || combined.match(/👤\s*(\d+)/) || combined.match(/(\d+)\s*seed/i); return m ? parseInt(m[1], 10) : 0; })();
+      const provider = detectProvider(combined, item, idx);
+      const quality  = getQuality(combined) || getQuality(upper);
+      const tags = [];
+      if (upper.includes('DV') || upper.includes('DOLBY VISION')) tags.push('DV');
+      if (upper.includes('HDR10+'))      tags.push('HDR10+');
+      else if (upper.includes('HDR10'))  tags.push('HDR10');
+      else if (upper.includes('HDR'))    tags.push('HDR');
+      if (upper.includes('HEVC') || upper.includes('X265') || upper.includes('H265')) tags.push('HEVC');
+      const langLine = getLangLine(combined);
+      if (langLine) tags.push(langLine);
+      else tags.push('English');
+      const tagLine = tags.join(' • ');
       streams.push({
         infoHash:  infoHash ? infoHash.toLowerCase() : undefined,
-        url:       infoHash ? buildMagnet(infoHash, title) : item.url,
-        name:      buildUnifiedName({ quality: quality, seeders: seeders, sourceLabel: '🦞 TorrentClaw' }),
-        title:     buildUnifiedTitle({ isSeries: isSeries, title: title, year: year, season: season, episode: episode, quality: quality, tagLine: tagLine, seeders: seeders, sizeStr: sizeStr, provider: provider }),
+        url:       infoHash ? undefined : item.url,
+        name:      buildUnifiedName({ quality, seeders, sourceLabel: '🦞 TorrentClaw' }),
+        title:     buildUnifiedTitle({ isSeries, title, year, season, episode, quality, tagLine, seeders, sizeStr, provider }),
         sources:   [],
         _quality:  quality,
         _seeders:  seeders,
@@ -389,99 +332,93 @@ function scrapeTorrentClaw(type, imdbId, title, year, season, episode) {
       });
     });
     return streams;
-  }).catch(function() { return []; });
+  } catch (_) { return []; }
 }
 
 // ── 3. Torrentio ─────────────────────────────────────────────────────
 
-function fetchTorrentio(type, id, title, year, season, episode) {
-  var isSeries = type === 'series';
-  var url = TORRENTIO_BASE + '/stream/' + type + '/' + id + '.json';
+async function fetchTorrentio(type, id, title, year, season, episode) {
+  try {
+    const url = `${TORRENTIO_BASE}/stream/${type}/${id}.json`;
+    const r = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!r.ok) return [];
+    const data = await r.json();
 
-  return fetchWithProxy(url).then(function(data) {
-    if (!data || !data.streams || !data.streams.length) return [];
-    return data.streams.map(function(s) {
-      var origTitle = s.title || '';
-      var providerMatch = origTitle.match(/⚙️\s*(\S+)/);
-      var provider = providerMatch ? providerMatch[1] : 'Unknown';
+    return (data.streams || []).map(s => {
+      const origTitle = s.title || '';
+      const providerMatch = origTitle.match(/⚙️\s*(\S+)/);
+      let provider = providerMatch ? providerMatch[1] : 'Unknown';
       provider = provider.toLowerCase().replace(/\.(to|com|org|net|io)$/, '');
       if (provider === 'thepiratebay') provider = 'thepiratesbay';
       if (provider === 'nyaa.si')      provider = 'nyaa';
       if (provider === 'limetorrents') provider = 'limetorrent';
       if (provider === 'kat')          provider = 'kickasstorrents';
-      var bh = s.behaviorHints || {};
-      var seeders = bh.seeders != null ? bh.seeders
-        : (function() {
-            var m = origTitle.match(/👤\s*(\d+)/) || origTitle.match(/🌱\s*(\d+)/);
-            return m ? parseInt(m[1], 10) : 0;
-          })();
-      var sizeGB  = getSizeGB(s);
-      var sizeStr = formatSize(sizeGB);
-      var quality = getQuality(origTitle) || getQuality(s.name || '');
-      var upper   = origTitle.toUpperCase();
-      var tags    = [];
-      if (upper.indexOf('DV') !== -1 || upper.indexOf('DOLBY VISION') !== -1) tags.push('DV');
-      if (upper.indexOf('HDR10+') !== -1)      tags.push('HDR10+');
-      else if (upper.indexOf('HDR10') !== -1)  tags.push('HDR10');
-      else if (upper.indexOf('HDR') !== -1)    tags.push('HDR');
-      if (upper.indexOf('HEVC') !== -1 || upper.indexOf('X265') !== -1 || upper.indexOf('H265') !== -1) tags.push('HEVC');
-      var langLine = getLangLine(origTitle);
-      tags.push(langLine || 'English');
-      var tagLine = tags.join(' • ');
-      var result = {};
-      Object.keys(s).forEach(function(k) { result[k] = s[k]; });
-      result.name     = buildUnifiedName({ quality: quality, seeders: seeders, sourceLabel: '🚀 Torrentio' });
-      result.title    = buildUnifiedTitle({ isSeries: isSeries, title: title, year: year, season: season, episode: episode, quality: quality, tagLine: tagLine, seeders: seeders, sizeStr: sizeStr, provider: provider });
-      result._quality = quality;
-      result._seeders = seeders;
-      result._sizeGB  = sizeGB;
-      result._source  = 'torrentio';
-      result._provider = provider;
-      return result;
+      const seeders = (s.behaviorHints && s.behaviorHints.seeders != null)
+        ? s.behaviorHints.seeders
+        : (() => { const m = origTitle.match(/👤\s*(\d+)/) || origTitle.match(/🌱\s*(\d+)/); return m ? parseInt(m[1], 10) : 0; })();
+      const sizeGB  = getSizeGB(s);
+      const sizeStr = formatSize(sizeGB);
+      const quality = getQuality(origTitle) || getQuality(s.name || '');
+      const upper   = origTitle.toUpperCase();
+      const tags    = [];
+      if (upper.includes('DV') || upper.includes('DOLBY VISION')) tags.push('DV');
+      if (upper.includes('HDR10+'))      tags.push('HDR10+');
+      else if (upper.includes('HDR10'))  tags.push('HDR10');
+      else if (upper.includes('HDR'))    tags.push('HDR');
+      if (upper.includes('HEVC') || upper.includes('X265') || upper.includes('H265')) tags.push('HEVC');
+      const langLine = getLangLine(origTitle);
+      if (langLine) tags.push(langLine);
+      else tags.push('English');
+      const tagLine = tags.join(' • ');
+      return {
+        ...s,
+        name:      buildUnifiedName({ quality, seeders, sourceLabel: '🚀 Torrentio' }),
+        title:     buildUnifiedTitle({ isSeries: type === 'series', title, year, season, episode, quality, tagLine, seeders, sizeStr, provider }),
+        _quality:  quality,
+        _seeders:  seeders,
+        _sizeGB:   sizeGB,
+        _source:   'torrentio',
+        _provider: provider,
+      };
     });
-  }).catch(function() { return []; });
+  } catch (_) { return []; }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────
 
-function getStreams(tmdbId, type, season, episode, settings) {
-  type = type || 'movie';
-  var isSeries = type === 'tv' || type === 'series';
-
-  return tmdbLookup(tmdbId, type).then(function(meta) {
-    var imdbId = (meta && meta.imdbId) ? meta.imdbId : String(tmdbId);
-    var title  = (meta && meta.title)  ? meta.title  : '';
-    var year   = (meta && meta.year)   ? meta.year   : '';
-    var stremioId = isSeries && season && episode
-      ? imdbId + ':' + season + ':' + episode
+async function getStreams(tmdbId, type = 'movie', season = null, episode = null, settings = null) {
+  try {
+    const isSeries = type === 'tv' || type === 'series';
+    const meta     = await tmdbLookup(tmdbId, type);
+    const imdbId   = (meta && meta.imdbId) ? meta.imdbId : String(tmdbId);
+    const title    = (meta && meta.title)  ? meta.title  : '';
+    const year     = (meta && meta.year)   ? meta.year   : '';
+    const stremioId = isSeries && season && episode
+      ? `${imdbId}:${season}:${episode}`
       : imdbId;
 
-    var ytsPromise = isSeries ? Promise.resolve([]) : scrapeYTS(imdbId);
-    var clawPromise = scrapeTorrentClaw(type, imdbId, title, year, season, episode);
-    var torrentioPromise = fetchTorrentio(type, stremioId, title, year, season, episode);
+    const [ytsR, torrentclawR, torrentioR] = await Promise.allSettled([
+      isSeries ? Promise.resolve([]) : scrapeYTS(imdbId),
+      scrapeTorrentClaw(type, imdbId, title, year, season, episode),
+      fetchTorrentio(type, stremioId, title, year, season, episode),
+    ]);
 
-    return Promise.all([
-      ytsPromise.catch(function() { return []; }),
-      clawPromise.catch(function() { return []; }),
-      torrentioPromise.catch(function() { return []; }),
-    ]).then(function(results) {
-      var yts       = results[0] || [];
-      var claw      = results[1] || [];
-      var torrentio = results[2] || [];
-      var all = yts.concat(claw).concat(torrentio);
-      return processStreams(all, type).map(function(s) {
-        return {
-          name:  s.name,
-          title: s.title,
-          url:   s.url || (s.infoHash ? buildMagnet(s.infoHash, title) : ''),
-        };
-      });
-    });
-  }).catch(function() { return []; });
+    const yts         = ytsR.status         === 'fulfilled' ? (ytsR.value         || []) : [];
+    const torrentclaw = torrentclawR.status === 'fulfilled' ? (torrentclawR.value || []) : [];
+    const torrentio   = torrentioR.status   === 'fulfilled' ? (torrentioR.value   || []) : [];
+
+    return processStreams([...yts, ...torrentclaw, ...torrentio], type)
+      .map(s => ({
+        name:  s.name,
+        title: s.title,
+        url:   s.url || (s.infoHash ? buildMagnet(s.infoHash, title) : ''),
+      }));
+
+  } catch (_) { return []; }
 }
 
-function onSettings() {
-  return Promise.resolve([
+async function onSettings() {
+  return [
     { type: 'header', label: '☀️ VanStreams+' },
     {
       type: 'select', key: 'quality', label: 'Preferred Quality',
@@ -502,7 +439,7 @@ function onSettings() {
       ],
       default: 'seeders',
     },
-  ]);
+  ];
 }
 
-module.exports = { getStreams: getStreams, onSettings: onSettings };
+module.exports = { getStreams, onSettings };
