@@ -1,11 +1,11 @@
 {
-  "name": "VanStreams+",
+  "name": "VanStreams",
   "version": "1.0.0",
   "scrapers": [
     {
       "id": "vanstreams",
       "name": "☀️ VanStreams+",
-      "description": "YTS • TorrentClaw • Torrentio",
+      "description": "Movies & Series via YTS, Knaben and Torrentio",
       "version": "1.0.0",
       "author": "Van",
       "supportedTypes": ["movie", "tv"],
